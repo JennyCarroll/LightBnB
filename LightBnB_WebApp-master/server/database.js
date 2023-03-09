@@ -115,10 +115,60 @@ exports.getAllReservations = getAllReservations;
  */
 
 const getAllProperties = (options, limit = 10) => {
+  //set up array to hold any parameters passed in from the user for the query
+  let queryParams = [];
+  let queryString = `SELECT properties.*, avg(property_reviews.rating) as average_rating
+  FROM properties
+  JOIN property_reviews ON properties.id = property_id `;
+
+  let ands = [];
+
+  //check if city has been passed in as an option
+  if (options.city) {
+    queryParams.push(`%${options.city}%`);
+    ands.push(` lower(properties.city) LIKE $${queryParams.length}`);
+  }
+  if (options.minimum_price_per_night) {
+    queryParams.push(Number(options.minimum_price_per_night));
+    ands.push(` cost_per_night >= $${queryParams.length}*100 `);
+  }
+  if (options.maximum_price_per_night) {
+    queryParams.push(Number(options.maximum_price_per_night));
+    ands.push(` cost_per_night <= $${queryParams.length}*100 `);
+  }
+  if (options.owner_id) {
+    queryParams.push(`%${options.owner_id}%`);
+    ands.push(` owner_id = $${queryParams.length} `);
+  }
+  if (ands.length > 0) {
+    queryString += " WHERE ";
+  }
+
+  queryString += ands.join(" AND ");
+
+  //add the group by before having
+  queryString += `
+  GROUP BY properties.id
+    `;
+  //check if minimum rating has been passed in as an option
+  if (options.minimum_rating) {
+    queryParams.push(Number(options.minimum_rating));
+    queryString += `
+    HAVING avg(property_reviews.rating) >= $${queryParams.length}
+    `;
+  }
+  //add order by and limit
+  queryParams.push(limit);
+  queryString += `
+    ORDER BY cost_per_night
+    LIMIT $${queryParams.length};
+    `;
+  console.log("queryString:", queryString);
+  console.log("queryParams:", queryParams);
   return pool
-    .query(`SELECT * FROM properties LIMIT $1;`, [limit])
+    .query(queryString, queryParams)
     .then((result) => {
-      // console.log(result.rows);
+      console.log(result.rows);
       return result.rows;
     })
     .catch((err) => {
