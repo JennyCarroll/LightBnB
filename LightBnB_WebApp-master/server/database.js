@@ -63,7 +63,7 @@ const addUser = function (user) {
       [user.name, user.email, user.password]
     )
     .then((result) => {
-      console.log(result.rows);
+      // console.log(result.rows);
       return result.rows;
     })
     .catch((err) => {
@@ -96,11 +96,11 @@ const getAllReservations = function (guest_id, limit = 10) {
       [limit]
     )
     .then((result) => {
-      console.log(result.rows);
+      // console.log(result.rows);
       return result.rows;
     })
     .catch((err) => {
-      // console.log(err.message);
+      console.log(err.message);
     });
 };
 exports.getAllReservations = getAllReservations;
@@ -137,7 +137,7 @@ const getAllProperties = (options, limit = 10) => {
     ands.push(` cost_per_night <= $${queryParams.length}*100 `);
   }
   if (options.owner_id) {
-    queryParams.push(`%${options.owner_id}%`);
+    queryParams.push(Number(options.owner_id));
     ands.push(` owner_id = $${queryParams.length} `);
   }
   if (ands.length > 0) {
@@ -163,12 +163,10 @@ const getAllProperties = (options, limit = 10) => {
     ORDER BY cost_per_night
     LIMIT $${queryParams.length};
     `;
-  console.log("queryString:", queryString);
-  console.log("queryParams:", queryParams);
   return pool
     .query(queryString, queryParams)
     .then((result) => {
-      console.log(result.rows);
+      // console.log(result.rows);
       return result.rows;
     })
     .catch((err) => {
@@ -183,9 +181,34 @@ exports.getAllProperties = getAllProperties;
  * @return {Promise<{}>} A promise to the property.
  */
 const addProperty = function (property) {
-  const propertyId = Object.keys(properties).length + 1;
-  property.id = propertyId;
-  properties[propertyId] = property;
-  return Promise.resolve(property);
+  return pool
+    .query(
+      `INSERT INTO properties (title, description, thumbnail_photo_url, cover_photo_url, cost_per_night, street, city, province, post_code, country, parking_spaces, number_of_bathrooms, number_of_bedrooms) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
+      RETURNING *;`,
+      [
+        property.title,
+        property.description,
+        property.thumbnail_photo_url,
+        property.cover_photo_url,
+        property.cost_per_night,
+        property.street,
+        property.city,
+        property.province,
+        property.post_code,
+        property.country,
+        property.parking_spaces,
+        property.number_of_bathrooms,
+        property.number_of_bedrooms,
+      ]
+    )
+    .then((result) => {
+      console.log(result.rows);
+      return result.rows;
+    })
+    .catch((err) => {
+      console.log(err.message);
+      return null;
+    });
 };
 exports.addProperty = addProperty;
